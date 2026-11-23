@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Chernobyl Ucronia</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&display=swap">
+<style>
+  /* Layout: un monitor a fosfori verdi a tutta pagina; testo che scorre, riga di comando in basso, tasti rapidi per il telefono. */
+  :root {
+    --case: #0b0f0b;          /* plastica scura del monitor */
+    --glass: #031208;         /* vetro spento */
+    --phosphor: #5dff8a;      /* verde P1 acceso */
+    --phosphor-dim: #2f9e55;  /* verde attenuato */
+    --phosphor-glow: rgba(93, 255, 138, .35);
+    --alarm: #ffb347;         /* ambra per gli allarmi */
+    --font-crt: "VT323", "IBM Plex Mono", ui-monospace, "Courier New", monospace;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; }
+  body {
+    background: var(--case);
+    color: var(--phosphor);
+    font-family: var(--font-crt);
+    font-size: 22px;
+    line-height: 1.2;
+    margin: 0;
+  }
+  .monitor {
+    box-sizing: border-box;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-block: 14px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    max-width: 980px;
+    margin: 0 auto;
+  }
+  .bezel {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    background: radial-gradient(ellipse at center, #062515 0%, var(--glass) 75%);
+    border-radius: 18px;
+    box-shadow: inset 0 0 60px rgba(0, 0, 0, .9), 0 0 0 10px #161c16, 0 0 0 12px #050705;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .bezel::after {
+    content: "";
+    position: absolute; inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, .22) 0 1px, transparent 1px 3px);
+  }
+  #screen {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 18px 20px 6px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    text-transform: uppercase;
+    text-shadow: 0 0 6px var(--phosphor-glow);
+    scrollbar-color: var(--phosphor-dim) transparent;
+  }
+  #screen .cmd { color: var(--phosphor-dim); }
+  #screen .alarm { color: var(--alarm); text-shadow: 0 0 6px rgba(255, 179, 71, .4); }
+  #screen p { margin: 0 0 .8em; max-width: 62ch; }
+  form.prompt {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 20px 16px;
+    text-shadow: 0 0 6px var(--phosphor-glow);
+  }
+  form.prompt label { font-size: 1.1em; }
+  #cmd {
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: 0;
+    outline: none;
+    color: var(--phosphor);
+    caret-color: var(--phosphor);
+    font: inherit;
+    text-transform: uppercase;
+    text-shadow: 0 0 6px var(--phosphor-glow);
+  }
+  #cmd:focus-visible { box-shadow: 0 1px 0 var(--phosphor-dim); }
+  .keys {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+  }
+  .keys button {
+    font: inherit;
+    font-size: 19px;
+    color: var(--phosphor);
+    background: #101710;
+    border: 1px solid #253325;
+    border-radius: 4px;
+    padding: 4px 10px;
+    min-width: 2.6em;
+    cursor: pointer;
+  }
+  .keys button:hover { border-color: var(--phosphor-dim); }
+  .keys button:focus-visible { outline: 2px solid var(--phosphor); outline-offset: 1px; }
+  .badge {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    color: var(--phosphor-dim);
+    font-size: 18px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .badge .led { display: inline-block; width: .55em; height: .55em; border-radius: 50%; background: var(--phosphor); box-shadow: 0 0 6px var(--phosphor); margin-right: .4em; }
+  .badge.night .led { background: var(--alarm); box-shadow: 0 0 6px var(--alarm); }
+  @media (max-width: 520px) {
+    body { font-size: 20px; }
+    #screen { padding: 14px 14px 4px; }
+    form.prompt { padding: 4px 14px 12px; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .cursor { animation: blink 1s steps(1) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+  }
+</style>
+</head>
+<body>
+
+<div class="monitor">
+  <div class="badge" id="badge"><span><span class="led"></span>Centrale V.I. Lenin · Blocco 4</span><span id="clock">25.04.1986 15:00</span></div>
+  <div class="bezel">
+    <div id="screen" role="log" aria-live="polite"></div>
+    <form class="prompt" id="form" autocomplete="off">
+      <label for="cmd">]</label>
+      <input id="cmd" name="cmd" type="text" spellcheck="false" autocapitalize="characters" aria-label="Comando">
+    </form>
+  </div>
+  <div class="keys" id="keys">
+    <button type="button" data-c="N">N</button>
+    <button type="button" data-c="S">S</button>
+    <button type="button" data-c="E">E</button>
+    <button type="button" data-c="O">O</button>
+    <button type="button" data-c="GUARDA">Guarda</button>
+    <button type="button" data-c="INVENTARIO">Inv</button>
+    <button type="button" data-c="STATO">Stato</button>
+    <button type="button" data-c="ASPETTA">Aspetta</button>
+    <button type="button" data-c="AIUTO">Aiuto</button>
+    <button type="button" data-c="SALVA">Salva</button>
+  </div>
+</div>
+
+<script src="game.js"></script>
+<script>
+(function () {
+  var screen = document.getElementById('screen');
+  var input = document.getElementById('cmd');
+  var form = document.getElementById('form');
+  var clockEl = document.getElementById('clock');
+  var badge = document.getElementById('badge');
+
+  var store = {
+    setItem: function (k, v) { try { localStorage.setItem(k, v); } catch (e) { throw e; } },
+    getItem: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  };
+  var game = new ChernobylGame({ storage: store });
+  var history = [], hpos = 0, log = [];
+
+  function print(text, cls) {
+    log.push({ t: text, c: cls || '' });
+    if (log.length > 400) log.shift();
+    render(text, cls);
+  }
+  function render(text, cls) {
+    var p = document.createElement('p');
+    if (cls) p.className = cls;
+    p.textContent = text;
+    if (/\*\*\*|01:23:40/.test(text) && !cls) p.className = 'alarm';
+    screen.appendChild(p);
+    screen.scrollTop = screen.scrollHeight;
+  }
+  function updateClock() {
+    var t = game.s.t;
+    clockEl.textContent = (t >= 1440 ? '26.04.1986 ' : '25.04.1986 ') + game.time();
+    badge.classList.toggle('night', t >= 23 * 60 + 10);
+  }
+  function run(cmd) {
+    if (!cmd.trim()) return;
+    print('] ' + cmd, 'cmd');
+    print(game.input(cmd));
+    updateClock();
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = input.value;
+    if (v.trim()) { history.push(v); hpos = history.length; }
+    input.value = '';
+    run(v);
+  });
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowUp' && hpos > 0) { hpos--; input.value = history[hpos]; e.preventDefault(); }
+    if (e.key === 'ArrowDown') { hpos = Math.min(history.length, hpos + 1); input.value = history[hpos] || ''; e.preventDefault(); }
+  });
+  document.getElementById('keys').addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    run(b.getAttribute('data-c'));
+    input.focus({ preventScroll: true });
+  });
+  screen.addEventListener('click', function () { if (!window.getSelection().toString()) input.focus({ preventScroll: true }); });
+
+  function start(data) {
+    if (data && data.state) {
+      game.s = data.state;
+      (data.log || []).forEach(function (l) { log.push(l); render(l.t, l.c); });
+    } else {
+      print(game.start());
+    }
+    updateClock();
+    input.focus({ preventScroll: true });
+  }
+  if (window.claude && window.claude.hot) {
+    window.claude.hot.snapshot(function () { return { state: game.s, log: log }; });
+  }
+  window.claude && window.claude.hot && window.claude.hot.ready ? window.claude.hot.ready(start) : start((window.claude && window.claude.hot && window.claude.hot.data) || {});
+})();
+</script>
+</body>
+</html>
