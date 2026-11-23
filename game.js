@@ -701,8 +701,7 @@
     var s = this.s, r = ROOMS[s.loc], to = r.exits[d];
     if (!to) return 'Non puoi andare a ' + DIR_NAMES[d] + '.';
     if (s.loc === 'guardia' && to === 'corridoio1') {
-      if (!this.has('ordine')) return 'Il soldato ti sbarra la strada. "Documenti, compagno."';
-      if (!s.f.timbro) return 'Il soldato legge l\'ordine e scuote la testa. "Manca il timbro del Partito. Senza, non entra nessuno."';
+      if (!s.f.guardOk) return 'Il soldato ti sbarra la strada con il fucile. "Alt! Documenti, compagno." (MOSTRA L\'ORDINE AL SOLDATO.)';
     }
     if (s.loc === 'archivio' && to === 'deposito' && !s.f.depositoAperto) return 'La porta di ferro è chiusa a chiave.';
     if (s.loc === 'corridoio3' && to === 'salacontrollo') {
@@ -714,6 +713,7 @@
         if (!s.f.fakeBadge) { s.f.fakeBadge = true; this.addCred(-2); }
       }
     }
+    if (to === 'guardia') s.f.guardOk = false;
     s.loc = to;
     var extra = '';
     if (to === 'salacontrollo' && !s.seen.salacontrollo) {
@@ -741,6 +741,7 @@
     var dep = Math.ceil(s.t / 60) * 60;
     var to = s.loc === 'stazione' ? 'guardia' : 'stazione';
     var wait = dep - s.t;
+    s.f.guardOk = false;
     var msg = (wait > 0 ? 'Aspetti la navetta delle ' + clock(dep) + '. ' : 'La navetta è lì che parte. ') + 'Paghi un rublo e sali. Venti minuti di strada fra i pini, ' + (to === 'guardia' ? 'con i camini della centrale che si avvicinano.' : 'fino alle prime case di Pripyat.');
     s.loc = to;
     return { text: msg + this.tick(dep - s.t + 20) + '\n\n' + this.look() };
@@ -750,6 +751,7 @@
     var s = this.s;
     if (s.loc !== 'stazione' && s.loc !== 'guardia') return 'Cammini avanti e indietro. Non serve a molto.';
     var to = s.loc === 'stazione' ? 'guardia' : 'stazione';
+    s.f.guardOk = false;
     s.loc = to;
     return { text: 'Tre chilometri a piedi lungo la strada, con le scarpe sbagliate.' + this.tick(45) + '\n\n' + this.look() };
   };
@@ -905,8 +907,25 @@
     return 'Non sembra interessato.';
   };
 
+  Game.prototype.showDocs = function () {
+    var s = this.s;
+    if (!this.has('ordine')) return 'Non hai nessun documento da mostrare. L\'ordine di servizio è rimasto in hotel.';
+    if (!s.f.timbro) return 'Il soldato legge l\'ordine e scuote la testa. "Manca il timbro del Partito. Senza, non entra nessuno."';
+    if (s.f.guardOk) return 'Il soldato: "L\'ho già visto, passi."';
+    s.f.guardOk = true;
+    var t = 'Il soldato prende l\'ordine, controlla il timbro, guarda la tua faccia e poi di nuovo il foglio. "Sorokin Pavel Ivanovich. Può passare."';
+    if (!this.has('dosimetro')) { this.give('dosimetro'); t += ' Ti dà anche un dosimetro a penna. "Lo tenga sempre addosso."'; }
+    return t;
+  };
+
   Game.prototype.show = function (args) {
     var s = this.s;
+    var DOCS = ['ORDINE', 'FOGLIO', 'DOCUMENTO', 'DOCUMENTI', 'PASS', 'LASCIAPASSARE', 'CARTELLINO', 'TESSERINO'];
+    if (s.loc === 'guardia' && (!args.length || args.some(function (a) { return DOCS.indexOf(a) >= 0; }))) {
+      if (this.has('cartellino') && args.some(function (a) { return a === 'CARTELLINO' || a === 'TESSERINO'; }))
+        return 'Il soldato guarda il cartellino di Ignatenko, poi te. "Questo non è lei. Mi mostri il suo ordine di servizio."';
+      return this.showDocs();
+    }
     var id = this.findItem(args, 'inv');
     var npc = this.findNpc(args) || this.anyNpc();
     if (!id) return 'Non hai niente del genere.';
@@ -958,7 +977,7 @@
       case 'kozlov':
         if (s.t < T_CRASH) return 'Kozlov ti squadra. "Lei è quello della verifica? Allora verifichi in silenzio. Stanotte si fa il test, è rinviato da tre anni."';
         return '"Parla, se hai qualcosa di utile da dire. Altrimenti zitto."';
-      case 'soldato': return '"Documenti e dosimetro. Il dosimetro lo do io, se ha l\'ordine timbrato."';
+      case 'soldato': return '"Nessuno entra senza mostrare i documenti. Mi faccia vedere l\'ordine di servizio timbrato."';
       case 'cassiera': return '"Vodka cinque rubli, sigarette due. Altro non c\'è."';
     }
     return 'Non risponde.';
